@@ -51,7 +51,7 @@ class RouteView(APIView):
             },
             "vehicle_assumptions": {"tank_range_miles": 500, "mpg": 10},
             "optimizations": [
-                "Result cached (1 hr TTL) — repeated queries served instantly",
+                "Result cached (1 hr TTL) : repeated queries served instantly",
                 "Geocode results cached (7-day TTL)",
                 "OSRM route cached (1-day TTL)",
                 "Fuel station CSV loaded once at startup",

@@ -25,9 +25,7 @@ from api.services import (
 )
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 def _make_stations(entries):
     """entries: list of (dist_from_start, price)"""
     return pd.DataFrame([
@@ -51,9 +49,7 @@ def _make_station_records(entries):
     ])
 
 
-# ---------------------------------------------------------------------------
-# 1. Geometry
-# ---------------------------------------------------------------------------
+# Geometry
 class TestCumulativeDistances(unittest.TestCase):
     def test_zero_for_single_point(self):
         lats = np.array([41.85])
@@ -107,9 +103,7 @@ class TestHaversineToRoute(unittest.TestCase):
         self.assertEqual(idx, -1)
 
 
-# ---------------------------------------------------------------------------
-# 2. Fuel station singleton
-# ---------------------------------------------------------------------------
+# Fuel station singleton
 class TestLoadFuelStations(unittest.TestCase):
     def test_singleton_identity(self):
         self.assertIs(load_fuel_stations(), load_fuel_stations())
@@ -132,9 +126,7 @@ class TestLoadFuelStations(unittest.TestCase):
         self.assertFalse(df["retail_price"].isna().any())
 
 
-# ---------------------------------------------------------------------------
-# 3. Optimal fuel algorithm
-# ---------------------------------------------------------------------------
+# Optimal fuel algorithm
 class TestPickFuelStops(unittest.TestCase):
 
     def test_short_trip_no_stop(self):
@@ -170,8 +162,6 @@ class TestPickFuelStops(unittest.TestCase):
         stops = pick_fuel_stops(
             _make_station_records([(200, 1.0), (600, 5.0)]), 900
         )
-        # At @200: cheapest in [200,700]. Fill completely (tank=500, arrived with 300mi fuel).
-        # Buy (500-300)/10 = 20gal.
         if stops:
             s = next((s for s in stops if s["dist_from_start"] == 200), None)
             if s:
@@ -198,9 +188,8 @@ class TestPickFuelStops(unittest.TestCase):
                 self.assertIn(field, stops[0])
 
 
-# ---------------------------------------------------------------------------
-# 4. Cache behaviour
-# ---------------------------------------------------------------------------
+
+# Cache behaviour
 class TestCaching(unittest.TestCase):
     def setUp(self):
         cache.clear()
@@ -239,9 +228,7 @@ class TestCaching(unittest.TestCase):
         self.assertFalse(result["_cached"])
 
 
-# ---------------------------------------------------------------------------
-# 5. Integration
-# ---------------------------------------------------------------------------
+# Integration
 class TestIntegration(unittest.TestCase):
     def setUp(self):
         cache.clear()
@@ -278,7 +265,7 @@ class TestIntegration(unittest.TestCase):
         self.assertGreaterEqual(s["total_fuel_cost_usd"], 0)
         self.assertEqual(result["route_geometry"]["type"], "LineString")
 
-        print(f"\n✅ Integration: {s['fuel_stops_count']} stops, "
+        print(f"\nIntegration: {s['fuel_stops_count']} stops, "
               f"${s['total_fuel_cost_usd']:.2f} total")
         for st in result["fuel_stops"]:
             print(f"   #{st['stop_number']} {st['name']} ({st['city']}, {st['state']}) "
