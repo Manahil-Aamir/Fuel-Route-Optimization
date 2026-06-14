@@ -32,9 +32,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FUEL_DATA_PATH = BASE_DIR / 'fuel_prices.csv'
 
-# ---------------------------------------------------------------------------
-# Cache — tries Redis first, falls back to local-memory (works out of the box)
-# ---------------------------------------------------------------------------
+
+# Cache : tries Redis first, falls back to local-memory (works out of the box)
 REDIS_URL = os.environ.get('REDIS_URL', '')
 
 if REDIS_URL:
@@ -61,9 +60,9 @@ else:
     }
 
 # Cache TTLs (seconds)
-CACHE_TTL_GEOCODE = 86400 * 7   # city coords don't change – 7 days
-CACHE_TTL_OSRM    = 86400       # route geometry – 1 day
-CACHE_TTL_ROUTE   = 3600        # full plan result – 1 hour (fuel prices change)
+CACHE_TTL_GEOCODE = 86400 * 7   # city coords don't change : 7 days
+CACHE_TTL_OSRM    = 86400       # route geometry : 1 day
+CACHE_TTL_ROUTE   = 3600        # full plan result : 1 hour (fuel prices change)
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
