@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuel Route Optimizer</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+        padding: 32px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #f8fafc;
+      }
+      .header p {
+        color: #94a3b8;
+        margin-top: 6px;
+        font-size: 14px;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px;
+      }
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 24px;
+      }
+      .card h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 20px;
+      }
+      .form-row {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .form-group {
+        flex: 1;
+        min-width: 200px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+      input {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid #334155;
+        color: #f1f5f9;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus {
+        border-color: #3b82f6;
+      }
+      input::placeholder {
+        color: #475569;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        white-space: nowrap;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      button:disabled {
+        background: #334155;
+        color: #64748b;
+        cursor: not-allowed;
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+      }
+      .stat {
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .stat-label {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-top: 4px;
+      }
+      .stat-sub {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 10px 16px;
+        border-bottom: 1px solid #1e293b;
+      }
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #1e293b;
+        font-size: 14px;
+        color: #cbd5e1;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: #243447;
+      }
+      .stop-num {
+        width: 32px;
+        height: 32px;
+        background: #1d4ed8;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        color: white;
+      }
+      .error {
+        background: #450a0a;
+        border: 1px solid #7f1d1d;
+        border-radius: 8px;
+        padding: 16px;
+        color: #fca5a5;
+        font-size: 14px;
+        margin-bottom: 24px;
+      }
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #ffffff44;
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .copy-btn {
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #94a3b8;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .copy-btn:hover {
+        background: #334155;
+        color: #f1f5f9;
+      }
+      .cached-badge {
+        background: #14532d;
+        color: #4ade80;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .fresh-badge {
+        background: #1e3a5f;
+        color: #60a5fa;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      #results {
+        display: none;
+      }
+      .examples {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .example-btn {
+        background: #0f172a;
+        border: 1px solid #334155;
+        color: #94a3b8;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .example-btn:hover {
+        border-color: #3b82f6;
+        color: #60a5fa;
+      }
+      .map-hint {
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 16px;
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 16px;
+      }
+      .map-hint a {
+        color: #60a5fa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div style="max-width: 1100px; margin: 0 auto">
+        <h1>&#9981; Fuel Route Optimizer</h1>
+        <p>
+          Find the cheapest fuel stops along any US road trip &middot; 500 mi tank &middot; 10 MPG
+        </p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <h2>Plan Your Route</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Location</label>
+            <input id="start" type="text" placeholder="e.g. Chicago, IL" />
+          </div>
+          <div class="form-group">
+            <label>End Location</label>
+            <input id="end" type="text" placeholder="e.g. Los Angeles, CA" />
+          </div>
+          <button id="btn" onclick="planRoute()">Get Route</button>
+        </div>
+        <div class="examples">
+          <span style="font-size: 13px; color: #475569; line-height: 2">Try:</span>
+          <button class="example-btn" onclick="fillExample('Chicago, IL', 'Los Angeles, CA')">
+            Chicago to LA
+          </button>
+          <button class="example-btn" onclick="fillExample('New York, NY', 'Miami, FL')">
+            New York to Miami
+          </button>
+          <button class="example-btn" onclick="fillExample('Seattle, WA', 'Denver, CO')">
+            Seattle to Denver
+          </button>
+          <button class="example-btn" onclick="fillExample('Dallas, TX', 'Boston, MA')">
+            Dallas to Boston
+          </button>
+        </div>
+      </div>
+
+      <div id="error-box" style="display: none" class="error"></div>
+
+      <div id="results">
+        <div class="card">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 20px;
+            "
+          >
+            <h2 style="margin: 0">Route Summary</h2>
+            <span id="cache-badge"></span>
+          </div>
+          <div class="summary-grid">
+            <div class="stat">
+              <div class="stat-label">Distance</div>
+              <div class="stat-value" id="s-miles">-</div>
+              <div class="stat-sub">miles</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Drive Time</div>
+              <div class="stat-value" id="s-time">-</div>
+              <div class="stat-sub">estimated</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Fuel Cost</div>
+              <div class="stat-value" id="s-cost" style="color: #4ade80">-</div>
+              <div class="stat-sub" id="s-gallons">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Fuel Stops</div>
+              <div class="stat-value" id="s-stops">-</div>
+              <div class="stat-sub">along the route</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="stops-card" style="display: none">
+          <h2>Fuel Stops</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Station</th>
+                <th>Location</th>
+                <th>Miles In</th>
+                <th>Price/Gal</th>
+                <th>Gallons</th>
+                <th>Cost</th>
+                <th>Fuel on Arrival</th>
+              </tr>
+            </thead>
+            <tbody id="stops-body"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Visualize on Map</h2>
+          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px">
+            Copy this GeoJSON and paste into
+            <a href="https://geojson.io" target="_blank">geojson.io</a> to see your route and fuel
+            stops on a map.
+          </p>
+          <div style="position: relative">
+            <textarea
+              id="geojson-out"
+              readonly
+              style="
+                width: 100%;
+                height: 120px;
+                background: #0f172a;
+                border: 1px solid #334155;
+                color: #64748b;
+                padding: 12px;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 12px;
+                resize: none;
+              "
+            ></textarea>
+            <button
+              class="copy-btn"
+              style="position: absolute; top: 10px; right: 10px"
+              onclick="copyGeo(this)"
+            >
+              Copy
+            </button>
+          </div>
+          <div class="map-hint">
+            Go to <a href="https://geojson.io" target="_blank">geojson.io</a> - click the JSON tab
+            on the right side - paste the GeoJSON - your route and stops appear instantly on the
+            map.
+          </div>
+        </div>
+
+        <div class="card">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+            "
+          >
+            <h2 style="margin: 0">Raw API Response</h2>
+            <button class="copy-btn" onclick="copyRaw(this)">Copy JSON</button>
+          </div>
+          <pre
+            id="raw-out"
+            style="
+              background: #0f172a;
+              padding: 16px;
+              border-radius: 8px;
+              overflow: auto;
+              max-height: 400px;
+              font-size: 12px;
+              color: #64748b;
+              line-height: 1.6;
+            "
+          ></pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function fillExample(s, e) {
+        document.getElementById('start').value = s
+        document.getElementById('end').value = e
+      }
+
+      async function planRoute() {
+        const start = document.getElementById('start').value.trim()
+        const end = document.getElementById('end').value.trim()
+        const btn = document.getElementById('btn')
+        const errBox = document.getElementById('error-box')
+
+        if (!start || !end) {
+          showError('Please enter both a start and end location.')
+          return
+        }
+
+        errBox.style.display = 'none'
+        document.getElementById('results').style.display = 'none'
+        btn.disabled = true
+        btn.innerHTML = '<span class="spinner"></span>Planning route...'
+
+        try {
+          const resp = await fetch('/api/route/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start, end }),
+          })
+          const data = await resp.json()
+          if (!resp.ok) {
+            showError(data.error || 'Something went wrong.')
+            return
+          }
+          renderResults(data)
+        } catch (e) {
+          showError('Network error - is the Django server running on localhost:8000?')
+        } finally {
+          btn.disabled = false
+          btn.textContent = 'Get Route'
+        }
+      }
+
+      function renderResults(d) {
+        const s = d.route_summary
+        document.getElementById('s-miles').textContent = s.total_miles.toLocaleString()
+        document.getElementById('s-time').textContent = s.estimated_drive_time
+        document.getElementById('s-cost').textContent = '$' + s.total_fuel_cost_usd.toFixed(2)
+        document.getElementById('s-gallons').textContent =
+          s.total_gallons_needed + ' gallons needed'
+        document.getElementById('s-stops').textContent = s.fuel_stops_count
+        document.getElementById('cache-badge').innerHTML = d._cached
+          ? '<span class="cached-badge">Cached</span>'
+          : '<span class="fresh-badge">Fresh</span>'
+
+        const tbody = document.getElementById('stops-body')
+        tbody.innerHTML = ''
+        if (d.fuel_stops && d.fuel_stops.length > 0) {
+          d.fuel_stops.forEach((st) => {
+            const c =
+              st.price_per_gallon < 3.0
+                ? '#4ade80'
+                : st.price_per_gallon < 3.5
+                  ? '#facc15'
+                  : '#f87171'
+            tbody.innerHTML +=
+              '<tr>' +
+              '<td><div class="stop-num">' +
+              st.stop_number +
+              '</div></td>' +
+              '<td><div style="font-weight:600;color:#f1f5f9;">' +
+              st.name +
+              '</div>' +
+              '<div style="font-size:12px;color:#475569;">' +
+              st.address +
+              '</div></td>' +
+              '<td>' +
+              st.city +
+              ', ' +
+              st.state +
+              '</td>' +
+              '<td>' +
+              st.miles_from_start.toLocaleString() +
+              ' mi</td>' +
+              '<td><span style="font-weight:700;color:' +
+              c +
+              ';">$' +
+              st.price_per_gallon.toFixed(3) +
+              '</span></td>' +
+              '<td>' +
+              st.gallons_purchased +
+              ' gal</td>' +
+              '<td style="font-weight:600;color:#f1f5f9;">$' +
+              st.cost_at_stop.toFixed(2) +
+              '</td>' +
+              '<td>' +
+              st.fuel_on_arrival_miles +
+              ' mi</td>' +
+              '</tr>'
+          })
+          document.getElementById('stops-card').style.display = 'block'
+        } else {
+          document.getElementById('stops-card').style.display = 'none'
+        }
+
+        const geo = {
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              geometry: d.route_geometry,
+              properties: { stroke: '#3b82f6', 'stroke-width': 4 },
+            },
+            ...(d.fuel_stops || []).map((st) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [st.lon, st.lat] },
+              properties: {
+                'marker-color': '#f59e0b',
+                'marker-size': 'medium',
+                title: st.name,
+                description: '$' + st.price_per_gallon + '/gal - Stop #' + st.stop_number,
+              },
+            })),
+          ],
+        }
+        document.getElementById('geojson-out').value = JSON.stringify(geo, null, 2)
+        document.getElementById('raw-out').textContent = JSON.stringify(d, null, 2)
+        document.getElementById('results').style.display = 'block'
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth' })
+      }
+
+      function showError(msg) {
+        const b = document.getElementById('error-box')
+        b.textContent = msg
+        b.style.display = 'block'
+      }
+
+      function copyGeo(btn) {
+        navigator.clipboard.writeText(document.getElementById('geojson-out').value)
+        btn.textContent = 'Copied!'
+        setTimeout(() => (btn.textContent = 'Copy'), 1500)
+      }
+
+      function copyRaw(btn) {
+        navigator.clipboard.writeText(document.getElementById('raw-out').textContent)
+        btn.textContent = 'Copied!'
+        setTimeout(() => (btn.textContent = 'Copy JSON'), 1500)
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') planRoute()
+      })
+    </script>
+  </body>
+</html>

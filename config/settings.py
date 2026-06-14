@@ -10,8 +10,11 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
  
 # Applications 
 INSTALLED_APPS = [
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
     'rest_framework',
-    'api.apps.ApiConfig',   # registers AppConfig.ready() to pre-warm the CSV
+    'api.apps.ApiConfig',
+    
 ]
  
 MIDDLEWARE = [
@@ -41,8 +44,7 @@ TEMPLATES = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME':   ':memory:',
-        'TEST':   {'NAME': ':memory:'},
+        'NAME': 'db.sqlite3',
     }
 }
  
@@ -72,7 +74,7 @@ CACHE_TTL_ROUTE   = int(os.environ.get('CACHE_TTL_ROUTE',   3600))    # 1 hour
  
 
 # Fuel data
-FUEL_DATA_PATH = BASE_DIR / 'fuel_prices.csv'
+FUEL_DATA_PATH = BASE_DIR / 'fuel_prices_with_coords.csv'
  
 
 # Django REST Framework
@@ -86,11 +88,12 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '60/min',   # protects Nominatim/OSRM from being hammered
     },
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [],
+
 }
  
-# ---------------------------------------------------------------------------
 # Logging
-# ---------------------------------------------------------------------------
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

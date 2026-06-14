@@ -73,6 +73,9 @@ def _build_fuel_df() -> pd.DataFrame:
         "Rack ID":           "rack_id",
         "Retail Price":      "retail_price",
     })
+    df = df.dropna(subset=["lat", "lon"])
+    df["lat"] = df["lat"].astype(float)
+    df["lon"] = df["lon"].astype(float)
     return df
  
  
@@ -256,58 +259,19 @@ def enrich_stations_with_coords(
     df: pd.DataFrame,
     route_coords: list,
 ) -> tuple[pd.DataFrame, float]:
-    """
-    For each station in df, find its position along the route polyline.
-    Returns (stations_on_route sorted by dist_from_start, total_route_miles).
- 
-    Performance:
-    - Cache checked for all cities before any network call
-    - Uncached cities geocoded in parallel (up to GEOCODE_WORKERS threads)
-    - Global 1 req/s rate limit respected across all threads
-    - Proximity matching is fully vectorised
-    """
-    route_arr  = np.array(route_coords, dtype=np.float64) 
-    route_lons = route_arr[:, 0]
-    route_lats = route_arr[:, 1]
-    cum_dist   = _cumulative_distances(route_lats, route_lons)
+    route_arr   = np.array(route_coords, dtype=np.float64)
+    route_lons  = route_arr[:, 0]
+    route_lats  = route_arr[:, 1]
+    cum_dist    = _cumulative_distances(route_lats, route_lons)
     total_miles = float(cum_dist[-1])
- 
-    # Batch cache lookup before spawning any threads
-    unique_places = df["_city_state"].unique().tolist()
-    place_coords: dict[str, Optional[tuple[float, float]]] = {}
-    uncached: list[str] = []
- 
-    for p in unique_places:
-        hit = cache.get(_geo_key(p))
-        if hit is not None:
-            place_coords[p] = hit
-        else:
-            uncached.append(p)
- 
-    logger.debug(
-        "Station geocoding: %d cached, %d to fetch", len(place_coords), len(uncached)
-    )
- 
-    # Parallel geocoding for cache misses 
-    if uncached:
-        with ThreadPoolExecutor(max_workers=GEOCODE_WORKERS) as pool:
-            future_to_place = {pool.submit(_geocode_safe, p): p for p in uncached}
-            for fut in as_completed(future_to_place):
-                place = future_to_place[fut]
-                place_coords[place] = fut.result()   # None on failure 
- 
-    # Vectorised proximity matching --
+
     records = []
     for row in df.itertuples(index=False):
-        coords = place_coords.get(row._asdict().get("_city_state"))
-        if coords is None:
-            continue
-        slat, slon = coords
- 
-        min_dist, route_idx = _haversine_to_route(slat, slon, route_lats, route_lons)
+        min_dist, route_idx = _haversine_to_route(
+            row.lat, row.lon, route_lats, route_lons
+        )
         if min_dist > ROUTE_PROXIMITY_MILES:
             continue
- 
         records.append({
             "id":              row.opis_id,
             "name":            row.truckstop_name,
@@ -315,18 +279,17 @@ def enrich_stations_with_coords(
             "state":           row.State,
             "address":         row.Address,
             "price":           float(row.retail_price),
-            "lat":             slat,
-            "lon":             slon,
+            "lat":             row.lat,
+            "lon":             row.lon,
             "dist_from_start": float(cum_dist[route_idx]),
             "dist_from_route": round(min_dist, 3),
         })
- 
+
     result = pd.DataFrame(records)
     if not result.empty:
         result = result.sort_values("dist_from_start").reset_index(drop=True)
     return result, total_miles
- 
-
+    
 # Optimal fuel selection algorithm
 def pick_fuel_stops(stations_df: pd.DataFrame, total_miles: float) -> list[dict]:
     """
@@ -441,7 +404,10 @@ def plan_route(start: str, end: str) -> dict:
  
     # Match stations to route --
     stations_on_route, _ = enrich_stations_with_coords(fuel_df, route_coords)
- 
+    print(f"Total stations in CSV: {len(fuel_df)}")
+    print(f"Stations matched to route: {len(stations_on_route)}")
+    print(f"First 5 matched stations: {stations_on_route.head()}")
+
     # Optimal fuel stop selection --
     stops      = pick_fuel_stops(stations_on_route, total_miles)
     total_cost = round(sum(s["cost_at_stop"] for s in stops), 2)
