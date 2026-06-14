@@ -1,71 +1,117 @@
 from pathlib import Path
 import os
-
+ 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-fuel-route-demo-key-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['*']
-
+ 
+# Security
+SECRET_KEY   = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-in-prod')
+DEBUG        = os.environ.get('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ 
+# Applications 
 INSTALLED_APPS = [
-    'django.contrib.contenttypes',
-    'django.contrib.auth',
     'rest_framework',
-    'api',
+    'api.apps.ApiConfig',   # registers AppConfig.ready() to pre-warm the CSV
 ]
-
+ 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
 ]
-
-ROOT_URLCONF = 'config.urls'
-
+ 
+ROOT_URLCONF      = 'config.urls'
+WSGI_APPLICATION  = 'config.wsgi.application'
+ASGI_APPLICATION  = 'config.asgi.application'
+ 
+# Templates
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS':    [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+            ],
+        },
+    },
+]
+ 
+# Database 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME':   ':memory:',
+        'TEST':   {'NAME': ':memory:'},
     }
 }
+ 
+# Cache 
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+ 
+CACHES = {
+    'default': {
+        'BACKEND':  'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS':           'django_redis.client.DefaultClient',
+            'SOCKET_CONNECT_TIMEOUT':  2,
+            'SOCKET_TIMEOUT':          2,
+            # If Redis is unreachable, log a warning and recompute
+            'IGNORE_EXCEPTIONS':       True,
+        },
+        'TIMEOUT': 3600,
+        'KEY_PREFIX': 'fuelroute',   # avoids key collisions if Redis is shared
+    }
+}
+ 
+# Cache TTLs
+CACHE_TTL_GEOCODE = int(os.environ.get('CACHE_TTL_GEOCODE', 604800))  # 7 days
+CACHE_TTL_OSRM    = int(os.environ.get('CACHE_TTL_OSRM',    86400))   # 1 day
+CACHE_TTL_ROUTE   = int(os.environ.get('CACHE_TTL_ROUTE',   3600))    # 1 hour
+ 
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+# Fuel data
 FUEL_DATA_PATH = BASE_DIR / 'fuel_prices.csv'
+ 
 
-
-# Cache : tries Redis first, falls back to local-memory (works out of the box)
-REDIS_URL = os.environ.get('REDIS_URL', '')
-
-if REDIS_URL:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': REDIS_URL,
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'SOCKET_CONNECT_TIMEOUT': 2,
-                'SOCKET_TIMEOUT': 2,
-                'IGNORE_EXCEPTIONS': True,   # fall through to re-compute if Redis is down
-            },
-            'TIMEOUT': 3600,                 # 1 hour default TTL
-        }
-    }
-else:
-    # Zero-config fallback: per-process in-memory cache
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'TIMEOUT': 3600,
-        }
-    }
-
-# Cache TTLs (seconds)
-CACHE_TTL_GEOCODE = 86400 * 7   # city coords don't change : 7 days
-CACHE_TTL_OSRM    = 86400       # route geometry : 1 day
-CACHE_TTL_ROUTE   = 3600        # full plan result : 1 hour (fuel prices change)
-
+# Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',   # protects Nominatim/OSRM from being hammered
+    },
 }
+ 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '{levelname} {asctime} {module}: {message}',
+            'style':  '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class':     'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'api': {
+            'handlers':  ['console'],
+            'level':     os.environ.get('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO'),
+            'propagate': False,
+        },
+    },
+}
+ 
